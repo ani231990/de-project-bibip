@@ -2,6 +2,7 @@ from models import Car, CarFullInfo, CarStatus, Model, ModelSaleStats, Sale
 from datetime import datetime
 from decimal import Decimal
 
+
 class CarService:
 
     def __init__(self) -> None:
@@ -24,7 +25,7 @@ class CarService:
     def __add_data(self, file, file_index, data, key_for_index, type_key_sort):
         # Добавляем новую запись в файл с данными.
         with open(file, 'a', encoding='utf-8') as f:
-            result = ';'.join(data) + ';' + '\n'
+            result = ';'.join(data) + '\n'
             f.write(result)
 
         # Создаем файл с индексами, если он не существует.
@@ -41,13 +42,13 @@ class CarService:
             if type_key_sort == 'str':
                 index_data_sorted = sorted(index_data, key=lambda row: row[0])
             elif type_key_sort == 'int':
-                index_data_sorted = sorted(index_data, key=lambda row: int(row[0]))
+                index_data_sorted = sorted(index_data,
+                                           key=lambda row: int(row[0]))
 
         # Перезаписываем файл с индексами.
         with open(file_index, 'w') as f:
             for item in index_data_sorted:
-                f.write(str(item[0]) + ';' + str(item[1]) + ';' + '\n')
-
+                f.write(str(item[0]) + ';' + str(item[1]) + '\n')
 
     """Приватный метод для поиска номера строки по ключу
     в файле с индексами.
@@ -61,7 +62,6 @@ class CarService:
         # Возвращаем None, если данных нет:
         return None
 
-
     # Задание 1. Сохранение автомобилей и моделей
     def add_model(self, model: Model) -> Model:
         self.__add_data(file=self.models_file_path,
@@ -71,7 +71,6 @@ class CarService:
                         type_key_sort='int'
                         )
         return model
-    
 
     # Задание 1. Сохранение автомобилей и моделей
     def add_car(self, car: Car) -> Car:
@@ -93,8 +92,30 @@ class CarService:
                         key_for_index=str(sale.index()),
                         type_key_sort='str'
                         )
-        return sale
+        
+        # Поиск номера нужной строки для файла cars.txt:
+        row_num_car = self.__get_row_num(file_index=self.cars_index_file_path,
+                                         key_value=sale.car_vin)
+        # Читаем файл cars.txt:
+        with open(self.cars_file_path, 'r') as f:
+            # Записываем данные в список.
+            data = [line.split(';') for line in f.read().splitlines()]
+            # Находим нужную строку и заменяем статус:
+            data[row_num_car][4] = 'sold'
+            car = Car(
+                    vin=data[row_num_car][0],
+                    model=int(data[row_num_car][1]),
+                    price=Decimal(data[row_num_car][2]),
+                    date_start=datetime.strptime(data[row_num_car][3], '%Y-%m-%d %H:%M:%S'),
+                    status=CarStatus.sold
+                )
 
+        # Перезаписываем файл с данными cars.txt:
+        with open(self.cars_file_path, 'w') as f:
+            for item in data:
+                f.write(';'.join(item) + '\n')
+
+        return car
 
     # Задание 3. Доступные к продаже
     def get_cars(self, status: CarStatus) -> list[Car]:
@@ -112,11 +133,10 @@ class CarService:
                             model=int(item[1]),
                             price=Decimal(item[2]),
                             date_start=datetime.strptime(item[3], '%Y-%m-%d %H:%M:%S'),
-                            status=CarStatus.available,
+                            status=CarStatus.available
                         )
                     result.append(car)
         return result
-
 
     # Задание 4. Детальная информация
     def get_car_info(self, vin: str) -> CarFullInfo | None:
@@ -136,8 +156,7 @@ class CarService:
                     model_id = line_list[1]
                     price = Decimal(line_list[2])
                     date_start = datetime.strptime(line_list[3], '%Y-%m-%d %H:%M:%S')
-                    #car_status = CarStatus(line_list[4])
-                    car_status = CarStatus.available
+                    car_status = CarStatus(line_list[4])
                     # Обрываем цикл:
                     break
 
@@ -193,7 +212,7 @@ class CarService:
 
     # Задание 5. Обновление ключевого поля
     def update_vin(self, vin: str, new_vin: str) -> Car:
-        # Читаем файл с индексами cars_index.txt
+        # Читаем файл с индексами cars_index.txt:
         with open(self.cars_index_file_path, 'r') as f:
             # Записываем данные в список.
             index_data = [line.split(';') for line in f.read().splitlines()]
@@ -201,21 +220,76 @@ class CarService:
                 # Находим и заменяем нужный ключ vin:
                 if item[0] == vin:
                     item[0] = new_vin
-                    # Сохраним нужную строку в cars.txt:
+                    # Сохраним нужную строку для cars.txt:
                     row_num_car = int(item[1])
             # Сортируем данные по стобцу с ключом.
-            index_data_sorted = sorted(index_data, key=lambda row: int(row[0]))
+            index_data_sorted = sorted(index_data, key=lambda row: row[0])
 
-        # Перезаписываем файл с индексами.
+        # Перезаписываем файл с индексами cars_index.txt:
         with open(self.cars_index_file_path, 'w') as f:
             for item in index_data_sorted:
                 f.write(str(item[0]) + ";" + str(item[1]) + '\n')
-        
-        return None
+
+        # Читаем файл с данными cars.txt:
+        with open(self.cars_file_path, 'r') as f:
+            # Записываем данные в список.
+            data = [line.split(';') for line in f.read().splitlines()]
+            # Находим нужную строку и заменяем значение vin:
+            data[row_num_car][0] = new_vin
+            car = Car(
+                    vin=new_vin,
+                    model=int(data[row_num_car][1]),
+                    price=Decimal(data[row_num_car][2]),
+                    date_start=datetime.strptime(data[row_num_car][3], '%Y-%m-%d %H:%M:%S'),
+                    status=CarStatus(data[row_num_car][4])
+                )
+
+        # Перезаписываем файл с данными cars.txt:
+        with open(self.cars_file_path, 'w') as f:
+            for item in data:
+                f.write(';'.join(item) + '\n')
+        return car
 
     # Задание 6. Удаление продажи
     def revert_sale(self, sales_number: str) -> Car:
-        return None
+        with open(self.sales_file_path, 'r') as f:
+            # Записываем данные в список.
+            data = [line.split(';') for line in f.read().splitlines()]
+            for item in data:
+                if item[0] == sales_number:
+                    car_vin = item[1]
+                    data.remove(item)
+                    break
+
+        # Перезаписываем файл с данными cars.txt:
+        with open(self.sales_file_path, 'w') as f:
+            for item in data:
+                f.write(';'.join(item) + '\n')
+
+        # Находим номер строки в файле cars.txt, которому соответсвует
+        # значение vin.
+        row_num_car = self.__get_row_num(file_index=self.cars_index_file_path,
+                                         key_value=car_vin)
+
+        # Читаем файл с данными cars.txt:
+        with open(self.cars_file_path, 'r') as f:
+            # Записываем данные в список.
+            data = [line.split(';') for line in f.read().splitlines()]
+            # Находим нужную строку и заменяем статус:
+            data[row_num_car][4] = 'available'
+            car = Car(
+                    vin=data[row_num_car][0],
+                    model=int(data[row_num_car][1]),
+                    price=Decimal(data[row_num_car][2]),
+                    date_start=datetime.strptime(data[row_num_car][3], '%Y-%m-%d %H:%M:%S'),
+                    status=CarStatus.available
+                )
+
+        # Перезаписываем файл с данными cars.txt:
+        with open(self.cars_file_path, 'w') as f:
+            for item in data:
+                f.write(';'.join(item) + '\n')
+        return car
 
     # Задание 7. Самые продаваемые модели
     def top_models_by_sales(self) -> list[ModelSaleStats]:
@@ -229,7 +303,7 @@ car_1 = Car(
         model=1,
         price=Decimal("2000"),
         date_start=datetime(2024, 2, 8),
-        status=CarStatus.available,
+        status=CarStatus.sold,
     )
 
 car_2 = Car(
@@ -351,3 +425,6 @@ print(service.get_cars(status='available'))
 
 print('------------------------')
 print(service.get_car_info(vin='KNAGM4A77D5316538'))
+
+
+print(service.update_vin("KNAGM4A77D5316538", "UPDGM4A77D5316538"))
