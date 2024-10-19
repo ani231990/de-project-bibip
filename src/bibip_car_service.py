@@ -293,138 +293,227 @@ class CarService:
 
     # Задание 7. Самые продаваемые модели
     def top_models_by_sales(self) -> list[ModelSaleStats]:
-        return None
+        result = [] # Список, куда будем записывать результат.
+        # Читаем файл с данными по продажам sales_index.txt:
+        with open(self.sales_file_path, 'r') as f:
+            # Записываем данные в список.
+            data = [line.split(';') for line in f.read().splitlines()]
+            # Создаем словарь, где для каждой модели будем записать
+            # число продаж и максимальную цену продажи.
+            sales_dict = {}
+            for sale in data:
+                if sale[1] in sales_dict.keys():
+                    # Если модель есть в словаре, то увеличиваем число продаж на 1:
+                    sales_dict[sale[1]][0] += 1
+                    # Сохраняем в словаре максимальную цену продажи для модели:
+                    if Decimal(sale[3]) > sales_dict[sale[1]][1]:
+                        sales_dict[sale[1]][1] = Decimal(sale[3])
+                else:
+                    # Если модели нет в словаре, добавляем данные по ней:
+                    # число продаж = 1, стоимость
+                    sales_dict[sale[1]] = [1, Decimal(sale[3])]
+            # Сортируем словарь по убыванию числа продаж и стоимости модели:
+            sales_list_sorted = sorted(sales_dict.items(),
+                                       key=lambda x: (x[1][0], x[1][1]),
+                                       reverse=True)
+            # Топ 3 модели по продажам:
+            top_3_models = sales_list_sorted[:3]
+
+            # Для каждой модели из top_3:
+            for car in top_3_models:
+                # Находим номер строки в файле cars.txt, которому соответсвует
+                # значение vin.
+                row_num_car = self.__get_row_num(file_index=self.cars_index_file_path,
+                                                key_value=car[0])
+
+                # Открываем на чтение файл cars.txt.
+                with open(self.cars_file_path, 'r') as f:
+                    for i, line in enumerate(f.read().splitlines()):
+                        # Находим нужную строку:
+                        if i == row_num_car:
+                            line_list = line.split(';')
+                            # Находим ID модели:
+                            model_id = line_list[1]
+                            # Обрываем цикл:
+                            break
+
+                # Находим номер строки в файле models.txt, которому соответствует
+                # значение model_id из коды выше.
+                row_num_model = self.__get_row_num(file_index=self.models_index_file_path,
+                                                key_value=model_id)
+
+                # Открываем на чтение файл models.txt.
+                with open(self.models_file_path, 'r') as f:
+                    for i, line in enumerate(f.read().splitlines()):
+                        # Находим нужную строку:
+                        if i == row_num_model:
+                            line_list = line.split(';')
+                            # Записываем нужные данные в переменные:
+                            model_name = line_list[1]
+                            brand_name = line_list[2]
+                            # Обрываем цикл:
+                            break
+                # Добавляем информацию о продаже модели в result:
+                result.append(ModelSaleStats(
+                                        car_model_name=model_name,
+                                        brand=brand_name,
+                                        sales_number=car[1][0]
+                                        ))
+        return result
 
 
 
 # ТЕСТЫ
-car_1 = Car(
-        vin="KNAGM4A77D5316538",
-        model=1,
-        price=Decimal("2000"),
-        date_start=datetime(2024, 2, 8),
-        status=CarStatus.sold,
-    )
+cars_list = [Car(
+            vin="KNAGM4A77D5316538",
+            model=1,
+            price=Decimal("2000"),
+            date_start=datetime(2024, 2, 8),
+            status=CarStatus.available,
+        ),
+        Car(
+            vin="5XYPH4A10GG021831",
+            model=2,
+            price=Decimal("2300"),
+            date_start=datetime(2024, 2, 20),
+            status=CarStatus.reserve,
+        ),
+        Car(
+            vin="KNAGH4A48A5414970",
+            model=1,
+            price=Decimal("2100"),
+            date_start=datetime(2024, 4, 4),
+            status=CarStatus.available,
+        ),
+        Car(
+            vin="JM1BL1TFXD1734246",
+            model=3,
+            price=Decimal("2276.65"),
+            date_start=datetime(2024, 5, 17),
+            status=CarStatus.available,
+        ),
+        Car(
+            vin="JM1BL1M58C1614725",
+            model=3,
+            price=Decimal("2549.10"),
+            date_start=datetime(2024, 5, 17),
+            status=CarStatus.reserve,
+        ),
+        Car(
+            vin="KNAGR4A63D5359556",
+            model=1,
+            price=Decimal("2376"),
+            date_start=datetime(2024, 5, 17),
+            status=CarStatus.available,
+        ),
+        Car(
+            vin="5N1CR2MN9EC641864",
+            model=4,
+            price=Decimal("3100"),
+            date_start=datetime(2024, 6, 1),
+            status=CarStatus.available,
+        ),
+        Car(
+            vin="JM1BL1L83C1660152",
+            model=3,
+            price=Decimal("2635.17"),
+            date_start=datetime(2024, 6, 1),
+            status=CarStatus.available,
+        ),
+        Car(
+            vin="5N1CR2TS0HW037674",
+            model=4,
+            price=Decimal("3100"),
+            date_start=datetime(2024, 6, 1),
+            status=CarStatus.available,
+        ),
+        Car(
+            vin="5N1AR2MM4DC605884",
+            model=4,
+            price=Decimal("3200"),
+            date_start=datetime(2024, 7, 15),
+            status=CarStatus.available,
+        ),
+        Car(
+            vin="VF1LZL2T4BC242298",
+            model=5,
+            price=Decimal("2280.76"),
+            date_start=datetime(2024, 8, 31),
+            status=CarStatus.delivery,
+        )
+    ]
 
-car_2 = Car(
-        vin="5XYPH4A10GG021831",
-        model=2,
-        price=Decimal("2300"),
-        date_start=datetime(2024, 2, 20),
-        status=CarStatus.reserve,
-    )
 
-car_3 = Car(
-        vin="KNAGH4A48A5414970",
-        model=1,
-        price=Decimal("2100"),
-        date_start=datetime(2024, 4, 4),
-        status=CarStatus.available,
-    )
+models_list = [
+        Model(id=1, name="Optima", brand="Kia"),
+        Model(id=2, name="Sorento", brand="Kia"),
+        Model(id=3, name="3", brand="Mazda"),
+        Model(id=4, name="Pathfinder", brand="Nissan"),
+        Model(id=5, name="Logan", brand="Renault")
+    ]
 
-car_4 = Car(
-        vin="JM1BL1TFXD1734246",
-        model=3,
-        price=Decimal("2276.65"),
-        date_start=datetime(2024, 5, 17),
-        status=CarStatus.available,
-    )
 
-car_5 = Car(
-        vin="JM1BL1M58C1614725",
-        model=3,
-        price=Decimal("2549.10"),
-        date_start=datetime(2024, 5, 17),
-        status=CarStatus.reserve,
-    )
-
-car_6 = Car(
-        vin="KNAGR4A63D5359556",
-        model=1,
-        price=Decimal("2376"),
-        date_start=datetime(2024, 5, 17),
-        status=CarStatus.available,
-    )
-
-car_7 = Car(
-        vin="5N1CR2MN9EC641864",
-        model=4,
-        price=Decimal("3100"),
-        date_start=datetime(2024, 6, 1),
-        status=CarStatus.available,
-    )
-
-car_8 = Car(
-        vin="JM1BL1L83C1660152",
-        model=3,
-        price=Decimal("2635.17"),
-        date_start=datetime(2024, 6, 1),
-        status=CarStatus.available,
-    )
-
-car_9 = Car(
-        vin="5N1CR2TS0HW037674",
-        model=4,
-        price=Decimal("3100"),
-        date_start=datetime(2024, 6, 1),
-        status=CarStatus.available,
-    )
-
-car_10 = Car(
-        vin="5N1AR2MM4DC605884",
-        model=4,
-        price=Decimal("3200"),
-        date_start=datetime(2024, 7, 15),
-        status=CarStatus.available,
-    )
-    
-car_11 = Car(
-        vin="VF1LZL2T4BC242298",
-        model=5,
-        price=Decimal("2280.76"),
-        date_start=datetime(2024, 8, 31),
-        status=CarStatus.delivery,
-    )
-
-model_1 = Model(id=1, name="Optima", brand="Kia")
-model_2 = Model(id=2, name="Sorento", brand="Kia")
-model_3 = Model(id=3, name="3", brand="Mazda")
-model_4 = Model(id=4, name="Pathfinder", brand="Nissan")
-model_5 = Model(id=5, name="Logan", brand="Renault")
-
-sale_1 = Sale(
-    sales_number="20240903#JM1BL1M58C1614725",
-    car_vin="JM1BL1M58C1614725",
-    sales_date=datetime(2024, 9, 3),
-    cost=Decimal("2399.99"),
-)
+sales_list = [
+    Sale(
+        sales_number="20240903#KNAGM4A77D5316538",
+        car_vin="KNAGM4A77D5316538",
+        sales_date=datetime(2024, 9, 3),
+        cost=Decimal("1999.09")
+    ),
+    Sale(
+        sales_number="20240903#KNAGH4A48A5414970",
+        car_vin="KNAGH4A48A5414970",
+        sales_date=datetime(2024, 9, 4),
+        cost=Decimal("2100")
+    ),
+    Sale(
+        sales_number="20240903#KNAGR4A63D5359556",
+        car_vin="KNAGR4A63D5359556",
+        sales_date=datetime(2024, 9, 5),
+        cost=Decimal("7623")
+    ),
+    Sale(
+        sales_number="20240903#JM1BL1M58C1614725",
+        car_vin="JM1BL1M58C1614725",
+        sales_date=datetime(2024, 9, 6),
+        cost=Decimal("2334")
+    ),
+    Sale(
+        sales_number="20240903#JM1BL1L83C1660152",
+        car_vin="KNAGM4A77D5316538",
+        sales_date=datetime(2024, 9, 7),
+        cost=Decimal("451")
+    ),
+    Sale(
+        sales_number="20240903#5N1CR2TS0HW037674",
+        car_vin="5N1CR2TS0HW037674",
+        sales_date=datetime(2024, 9, 8),
+        cost=Decimal("9876")
+    ),
+    Sale(
+        sales_number="20240903#5XYPH4A10GG021831",
+        car_vin="5XYPH4A10GG021831",
+        sales_date=datetime(2024, 9, 9),
+        cost=Decimal("1234")
+    ),
+]
 
 service = CarService()
 
-service.add_model(model_1)
-service.add_model(model_2)
-service.add_model(model_3)
-service.add_model(model_4)
-service.add_model(model_5)
+for x in cars_list:
+    service.add_car(x)
 
-service.add_car(car_1)
-service.add_car(car_2)
-service.add_car(car_3)
-service.add_car(car_4)
-service.add_car(car_5)
-service.add_car(car_6)
-service.add_car(car_7)
-service.add_car(car_8)
-service.add_car(car_9)
-service.add_car(car_10)
-service.add_car(car_11)
+for y in models_list:
+    service.add_model(y)
 
-service.sell_car(sale_1)
-
-print(service.get_cars(status='available'))
-
-print('------------------------')
-print(service.get_car_info(vin='KNAGM4A77D5316538'))
+for z in sales_list:
+    service.sell_car(z)
 
 
-print(service.update_vin("KNAGM4A77D5316538", "UPDGM4A77D5316538"))
+#print(service.get_cars(status='available'))
+
+#print(service.get_car_info(vin='KNAGM4A77D5316538'))
+
+#print(service.update_vin("KNAGM4A77D5316538", "UPDGM4A77D5316538"))
+
+print(service.top_models_by_sales())
